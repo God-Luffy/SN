@@ -1,8 +1,9 @@
 from logging import FileHandler, StreamHandler, INFO, basicConfig, error as log_error, info as log_info
-from os import path as ospath, environ, remove as osremove
-from subprocess import run as srun, call as scall
-from pkg_resources import working_set
+from os import path as ospath, environ, execl as osexecl
+from subprocess import run as srun
 from requests import get as rget
+from dotenv import load_dotenv
+from sys import executable
 
 if ospath.exists('log.txt'):
     with open('log.txt', 'r+') as f:
@@ -12,24 +13,54 @@ basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     handlers=[FileHandler('log.txt'), StreamHandler()],
                     level=INFO)
 
-UPSTREAM_REPO = 'https://github.com/SN-Abdullah-Al-Noman/SN_WZML'
-UPSTREAM_BRANCH = 'master'
+CONFIG_FILE_URL = environ.get('CONFIG_FILE_URL')
+try:
+    if len(CONFIG_FILE_URL) == 0:
+        raise TypeError
+    try:
+        res = rget(CONFIG_FILE_URL)
+        if res.status_code == 200:
+            with open('config.env', 'wb+') as f:
+                f.write(res.content)
+        else:
+            log_error(f"Failed to download config.env {res.status_code}")
+    except Exception as e:
+        log_error(f"CONFIG_FILE_URL: {e}")
+except:
+    pass
 
-if UPSTREAM_REPO is not None:
-    if ospath.exists('.git'):
-        srun(["rm", "-rf", ".git"])
+load_dotenv('config.env', override=True)
 
-    update = srun([f"git init -q \
-                     && git config --global user.email doc.adhikari@gmail.com \
-                     && git config --global user.name WZML \
-                     && git add . \
-                     && git commit -sm update -q \
-                     && git remote add origin {UPSTREAM_REPO} \
-                     && git fetch origin -q \
-                     && git reset --hard origin/{UPSTREAM_BRANCH} -q"], shell=True)
+UPSTREAM_REPO = environ.get('UPSTREAM_REPO')
+UPSTREAM_BRANCH = environ.get('UPSTREAM_BRANCH')
+try:
+    if len(UPSTREAM_REPO) == 0:
+       raise TypeError
+except:
+    UPSTREAM_REPO = "https://github.com/mohdsaif0026/WZML-railway-support"
+try:
+    if len(UPSTREAM_BRANCH) == 0:
+       raise TypeError
+except:
+    UPSTREAM_BRANCH = 'master'
 
-    UPSTREAM_REPO_URL = (UPSTREAM_REPO[:8] if UPSTREAM_REPO[:8] and UPSTREAM_REPO[:8].endswith('/') else UPSTREAM_REPO[:7]) + UPSTREAM_REPO.split('@')[1] if '@github.com' in UPSTREAM_REPO else UPSTREAM_REPO    
-    if update.returncode == 0:
-        log_info(f'Successfully updated with latest commit from {UPSTREAM_REPO_URL}')
-    else:
-        log_error(f'Something went wrong while updating, check {UPSTREAM_REPO_URL} if valid or not!')
+if ospath.exists('.git'):
+    srun(["rm", "-rf", ".git"])
+
+update = srun([f"git init -q \
+                 && git config --global user.email doc.adhikari@gmail.com \
+                 && git config --global user.name Karan \
+                 && git add . \
+                 && git commit -sm update -q \
+                 && git remote add origin {UPSTREAM_REPO} \
+                 && git fetch origin -q \
+                 && git reset --hard origin/{UPSTREAM_BRANCH} -q"], shell=True)
+
+if update.returncode == 0:
+    log_info('Successfully updated with latest commit from UPSTREAM_REPO')
+    log_info(f'Upstream Repo: {UPSTREAM_REPO}')
+    log_info(f'Upstream Branch: {UPSTREAM_BRANCH}')
+else:
+    log_error('Something went wrong while updating, check UPSTREAM_REPO if valid or not!')
+    log_info(f'Entered Upstream Repo: {UPSTREAM_REPO}')
+    log_info(f'Entered Upstream Branch: {UPSTREAM_BRANCH}')
